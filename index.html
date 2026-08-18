@@ -60,6 +60,15 @@
       transform: translate(-50%, -50%); pointer-events: none;
       animation: pulse .65s ease-in-out 3;
     }
+    .miss-mark {
+      position: absolute; transform: translate(-50%, -50%);
+      pointer-events: none; font-size: 30px; font-weight: 900;
+      line-height: 1; animation: miss .55s ease-out forwards;
+    }
+    @keyframes miss {
+      from { opacity: 1; transform: translate(-50%, -50%) scale(.7); }
+      to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); }
+    }
     @keyframes pulse { 50% { transform: translate(-50%, -50%) scale(1.3); opacity: .25; } }
     .photo-preview { max-width: 220px; width: 100%; border-radius: 12px; display:none; margin-top:10px; }
     .note { color:#666; font-size:13px; line-height:1.55; }
@@ -154,16 +163,17 @@ let gameActive = false;
 // 座標は画像幅/高さに対する0〜1の比率。
 // 将来AI側からこの形式で受け取れば、そのままゲーム判定に使えます。
 const allSpots = [
-  {x:.18,y:.19,r:.060},
-  {x:.52,y:.20,r:.055},
-  {x:.81,y:.18,r:.060},
-  {x:.28,y:.48,r:.060},
-  {x:.62,y:.47,r:.060},
-  {x:.86,y:.50,r:.055},
-  {x:.20,y:.75,r:.060},
-  {x:.45,y:.77,r:.055},
-  {x:.69,y:.73,r:.055},
-  {x:.86,y:.82,r:.060},
+  // 実際に変化している位置の中心座標
+  {x:.20,y:.33,r:.085},  // 左上パッケージの色
+  {x:.50,y:.29,r:.070},  // 中央上パッケージの帽子の色
+  {x:.80,y:.33,r:.085},  // 右上パッケージ（4→3 PACKS / 色）
+  {x:.20,y:.68,r:.085},  // CURRYカップの色
+  {x:.49,y:.68,r:.085},  // ORIGINAL→SPICY
+  {x:.79,y:.68,r:.085},  // SEAFOODカップの色
+  {x:.19,y:.90,r:.075},  // BULDAK→HOT
+  {x:.50,y:.90,r:.075},  // CARBONARA箱の色
+  {x:.74,y:.91,r:.075},  // $6.99→$5.99
+  {x:.86,y:.88,r:.070},  // 右下チェック色
 ];
 
 function sceneSVG(changed=false, enabledSpots=[]) {
@@ -287,7 +297,14 @@ function tapPicture(event, element) {
     message.textContent = "⭕ 正解！";
     updateProgress();
   } else {
-    message.textContent = "そこではないみたい";
+    message.textContent = "❌ そこではないみたい";
+    const miss = document.createElement("div");
+    miss.className = "miss-mark";
+    miss.textContent = "×";
+    miss.style.left = `${x * 100}%`;
+    miss.style.top = `${y * 100}%`;
+    element.appendChild(miss);
+    setTimeout(() => miss.remove(), 600);
   }
 }
 
@@ -302,8 +319,8 @@ function addRing(container, spot, cls) {
   if (cls === "hint-ring") setTimeout(() => ring.remove(), 2100);
 }
 
-leftPicture.addEventListener("pointerup", e => tapPicture(e, leftPicture));
-rightPicture.addEventListener("pointerup", e => tapPicture(e, rightPicture));
+leftPicture.addEventListener("click", e => tapPicture(e, leftPicture));
+rightPicture.addEventListener("click", e => tapPicture(e, rightPicture));
 
 startBtn.addEventListener("click", buildScene);
 resetBtn.addEventListener("click", buildScene);
