@@ -82,7 +82,7 @@
   </style>
 </head>
 <body>
-<header><h1>まちがいさがし Ver.1</h1></header>
+<header><h1>まちがいさがし Ver.1 <span style="font-size:12px;color:#777;font-weight:600;">build 3.0</span></h1></header>
 
 <main>
   <section class="card">
@@ -110,7 +110,7 @@
     </div>
     <p class="note">
       現在はAPIなしのゲーム部分を確認するデモ版です。間違い数は3 / 5 / 7 / 10個から選べます。
-      難易度は将来AI生成に渡す設定として保存してあり、デモでは当たり判定の大きさが少し変わります。
+      難易度は将来AI生成に渡す設定として保存してあり、デモでは当たり判定の大きさが少し変わります。赤丸は間違い部分に合わせて小さく表示します。
     </p>
   </section>
 
@@ -143,6 +143,7 @@
 </main>
 
 <script>
+const APP_VERSION = "3.0";
 const leftPicture = document.getElementById("leftPicture");
 const rightPicture = document.getElementById("rightPicture");
 const countSelect = document.getElementById("countSelect");
@@ -163,17 +164,17 @@ let gameActive = false;
 // 座標は画像幅/高さに対する0〜1の比率。
 // 将来AI側からこの形式で受け取れば、そのままゲーム判定に使えます。
 const allSpots = [
-  // 実際に変化している位置の中心座標
-  {x:.20,y:.33,r:.085},  // 左上パッケージの色
-  {x:.50,y:.29,r:.070},  // 中央上パッケージの帽子の色
-  {x:.80,y:.33,r:.085},  // 右上パッケージ（4→3 PACKS / 色）
-  {x:.20,y:.68,r:.085},  // CURRYカップの色
-  {x:.49,y:.68,r:.085},  // ORIGINAL→SPICY
-  {x:.79,y:.68,r:.085},  // SEAFOODカップの色
-  {x:.19,y:.90,r:.075},  // BULDAK→HOT
-  {x:.50,y:.90,r:.075},  // CARBONARA箱の色
-  {x:.74,y:.91,r:.075},  // $6.99→$5.99
-  {x:.86,y:.88,r:.070},  // 右下チェック色
+  // x/y = 中心座標、hitR = タップ判定、ringR = 表示する赤丸の大きさ
+  {x:.20,y:.33,hitR:.095,ringR:.055},
+  {x:.50,y:.29,hitR:.085,ringR:.043},
+  {x:.80,y:.33,hitR:.095,ringR:.060},
+  {x:.20,y:.68,hitR:.095,ringR:.055},
+  {x:.49,y:.68,hitR:.095,ringR:.055},
+  {x:.79,y:.68,hitR:.095,ringR:.055},
+  {x:.19,y:.90,hitR:.085,ringR:.050},
+  {x:.50,y:.90,hitR:.085,ringR:.050},
+  {x:.74,y:.91,hitR:.085,ringR:.050},
+  {x:.86,y:.88,hitR:.080,ringR:.045},
 ];
 
 function sceneSVG(changed=false, enabledSpots=[]) {
@@ -270,7 +271,7 @@ function updateProgress() {
 function detectionRadius(spot) {
   const d = difficulty.value;
   const multiplier = d === "easy" ? 1.45 : d === "hard" ? .82 : 1.08;
-  return spot.r * multiplier;
+  return spot.hitR * multiplier;
 }
 
 function tapPicture(event, element) {
@@ -313,7 +314,7 @@ function addRing(container, spot, cls) {
   ring.className = cls;
   ring.style.left = `${spot.x * 100}%`;
   ring.style.top = `${spot.y * 100}%`;
-  ring.style.width = `${spot.r * 200}%`;
+  ring.style.width = `${spot.ringR * 200}%`;
   ring.style.aspectRatio = "1 / 1";
   container.appendChild(ring);
   if (cls === "hint-ring") setTimeout(() => ring.remove(), 2100);
@@ -342,7 +343,33 @@ photoInput.addEventListener("change", () => {
 });
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("./sw.js?v=3");
+      await reg.update();
+
+      if (reg.waiting) reg.waiting.postMessage({type: "SKIP_WAITING"});
+
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            newWorker.postMessage({type: "SKIP_WAITING"});
+          }
+        });
+      });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        location.reload();
+      });
+    } catch (e) {
+      console.log("Service Worker registration skipped:", e);
+    }
+  });
 }
 
 // 初期表示
